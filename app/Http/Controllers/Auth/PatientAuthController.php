@@ -464,4 +464,97 @@ class PatientAuthController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Récupérer le dossier médical complet du patient connecté
+     */
+    public function getDossierMedical(Request $request)
+    {
+        try {
+            $patientId = auth()->id();
+            
+            $dossier = [
+                'patient' => auth()->user(),
+                'antecedents' => \App\Models\Antecedent::where('patient_id', $patientId)->get(),
+                'consultations' => \App\Models\Appointment::where('patient_id', $patientId)
+                    ->with(['medecin'])
+                    ->orderBy('date', 'desc')
+                    ->get(),
+                'ordonnances' => \App\Models\Ordonnance::where('patient_id', $patientId)
+                    ->with(['medecin', 'medicaments'])
+                    ->orderBy('date_prescription', 'desc')
+                    ->get(),
+                'arrets_maladie' => \App\Models\ArretMaladie::where('patient_id', $patientId)
+                    ->with(['medecin'])
+                    ->orderBy('date_debut', 'desc')
+                    ->get(),
+                'examens' => \App\Models\Examen::where('patient_id', $patientId)
+                    ->orderBy('date_prescription', 'desc')
+                    ->get(),
+            ];
+
+            return response()->json($dossier);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération dossier médical patient: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la récupération du dossier médical',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les ordonnances du patient
+     */
+    public function getOrdonnances(Request $request)
+    {
+        try {
+            $patientId = auth()->id();
+            $ordonnances = \App\Models\Ordonnance::where('patient_id', $patientId)
+                ->with(['medecin', 'medicaments'])
+                ->orderBy('date_prescription', 'desc')
+                ->get();
+
+            return response()->json($ordonnances);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération ordonnances patient: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la récupération des ordonnances',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les arrêts maladie du patient
+     */
+    public function getArretsMaladie(Request $request)
+    {
+        try {
+            $patientId = auth()->id();
+            $arretsMaladie = \App\Models\ArretMaladie::where('patient_id', $patientId)
+                ->with(['medecin'])
+                ->orderBy('date_debut', 'desc')
+                ->get();
+
+            return response()->json($arretsMaladie);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération arrêts maladie patient: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la récupération des arrêts maladie',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer le dossier médical complet (alias pour compatibilité)
+     */
+    public function getDossierMedicalComplet(Request $request)
+    {
+        return $this->getDossierMedical($request);
+    }
 }

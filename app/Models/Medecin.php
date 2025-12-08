@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Medecin extends Authenticatable
 {
@@ -179,5 +180,45 @@ class Medecin extends Authenticatable
     public function reviewsCount()
     {
         return $this->verifiedReviews()->count();
+    }
+
+     /**
+     * Relation avec les ordonnances créées
+     */
+    public function ordonnances(): HasMany
+    {
+        return $this->hasMany(Ordonnance::class);
+    }
+
+    /**
+     * Relation avec les arrêts maladie créés
+     */
+    public function arretsMaladie(): HasMany
+    {
+        return $this->hasMany(ArretMaladie::class);
+    }
+
+    /**
+     * Relation avec les examens prescrits
+     */
+    public function examens(): HasMany
+    {
+        return $this->hasMany(Examen::class);
+    }
+
+    /**
+     * Relation avec les partages de dossier médical (en tant que source)
+     */
+    public function medicalRecordSharesSent(): HasMany
+    {
+        return $this->hasMany(MedicalRecordShare::class, 'medecin_source_id');
+    }
+
+    /**
+     * Relation avec les partages de dossier médical (en tant que destinataire)
+     */
+    public function medicalRecordSharesReceived(): HasMany
+    {
+        return $this->hasMany(MedicalRecordShare::class, 'medecin_dest_id');
     }
 }

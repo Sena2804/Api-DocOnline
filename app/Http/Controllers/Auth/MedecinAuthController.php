@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
 
 class MedecinAuthController extends Controller
 {
@@ -638,6 +639,298 @@ class MedecinAuthController extends Controller
             return response()->json([
                 'error' => 'Erreur d\'authentification Google',
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function createOrdonnance(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'appointment_id' => 'required|exists:appointments,id',
+                'patient_id' => 'required|exists:patients,id',
+                'medecin_id' => 'required|exists:medecins,id',
+                'date_validite' => 'required|date',
+                'instructions' => 'nullable|string',
+                'renouvellements' => 'integer|min:0',
+                'medicaments' => 'required|array|min:1',
+                'medicaments.*.nom' => 'required|string',
+                'medicaments.*.dosage' => 'required|string',
+                'medicaments.*.posologie' => 'required|string',
+                'medicaments.*.duree' => 'required|string',
+                'medicaments.*.quantite' => 'required|string',
+                'medicaments.*.instructions' => 'nullable|string',
+            ]);
+
+            DB::beginTransaction();
+
+            $ordonnance = \App\Models\Ordonnance::create([
+                'appointment_id' => $validated['appointment_id'],
+                'patient_id' => $validated['patient_id'],
+                'medecin_id' => $validated['medecin_id'],
+                'date_prescription' => now(),
+                'date_validite' => $validated['date_validite'],
+                'instructions' => $validated['instructions'],
+                'renouvellements' => $validated['renouvellements'] ?? 0,
+                'statut' => 'active',
+            ]);
+
+            // Sauvegarder les médicaments
+            foreach ($validated['medicaments'] as $medicamentData) {
+                $ordonnance->medicaments()->create($medicamentData);
+            }
+
+            DB::commit();
+
+            // Charger les relations pour la réponse
+            $ordonnance->load(['medicaments', 'patient', 'medecin']);
+
+            return response()->json([
+                'message' => 'Ordonnance créée avec succès',
+                'ordonnance' => $ordonnance
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur création ordonnance: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la création de l\'ordonnance',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Créer un arrêt de maladie
+     */
+    public function createArretMaladie(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'appointment_id' => 'required|exists:appointments,id',
+                'patient_id' => 'required|exists:patients,id',
+                'medecin_id' => 'required|exists:medecins,id',
+                'date_debut' => 'required|date',
+                'date_fin' => 'required|date|after:date_debut',
+                'duree_jours' => 'required|integer|min:1',
+                'motif' => 'required|string',
+                'diagnostic' => 'required|string',
+                'recommandations' => 'nullable|string',
+                'renouvelable' => 'boolean',
+                'date_visite_controle' => 'nullable|date|after:date_fin',
+            ]);
+
+            $arretMaladie = \App\Models\ArretMaladie::create([
+                'appointment_id' => $validated['appointment_id'],
+                'patient_id' => $validated['patient_id'],
+                'medecin_id' => $validated['medecin_id'],
+                'date_debut' => $validated['date_debut'],
+                'date_fin' => $validated['date_fin'],
+                'duree_jours' => $validated['duree_jours'],
+                'motif' => $validated['motif'],
+                'diagnostic' => $validated['diagnostic'],
+                'recommandations' => $validated['recommandations'],
+                'renouvelable' => $validated['renouvelable'] ?? false,
+                'date_visite_controle' => $validated['date_visite_controle'],
+                'statut' => 'actif',
+            ]);
+
+            $arretMaladie->load(['patient', 'medecin']);
+
+            return response()->json([
+                'message' => 'Arrêt de maladie créé avec succès',
+                'arret_maladie' => $arretMaladie
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur création arrêt maladie: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la création de l\'arrêt de maladie',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Partager le dossier médical avec un autre médecin
+     */
+    public function shareMedicalRecord(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'appointmentId' => 'required|exists:appointments,id',
+                'patientId' => 'required|exists:patients,id',
+                'targetDoctorId' => 'required|exists:medecins,id',
+                'reason' => 'required|string',
+                'sharedBy' => 'required|string',
+            ]);
+
+            $share = \App\Models\MedicalRecordShare::create([
+                'appointment_id' => $validated['appointmentId'],
+                'patient_id' => $validated['patientId'],
+                'medecin_source_id' => auth()->id(),
+                'medecin_dest_id' => $validated['targetDoctorId'],
+                'reason' => $validated['reason'],
+                'shared_at' => now(),
+                'access_expires_at' => now()->addDays(30),
+            ]);
+
+            return response()->json([
+                'message' => 'Dossier médical partagé avec succès',
+                'share' => $share
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur partage dossier médical: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors du partage du dossier médical',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer le dossier médical complet d'un patient
+     */
+    public function getDossierMedicalPatient($patientId)
+    {
+        try {
+            $patient = Patient::findOrFail($patientId);
+            
+            $dossier = [
+                'patient' => $patient,
+                'antecedents' => \App\Models\Antecedent::where('patient_id', $patientId)->get(),
+                'consultations' => \App\Models\Appointment::where('patient_id', $patientId)
+                    ->with(['medecin'])
+                    ->orderBy('date', 'desc')
+                    ->get(),
+                'ordonnances' => \App\Models\Ordonnance::where('patient_id', $patientId)
+                    ->with(['medecin', 'medicaments'])
+                    ->orderBy('date_prescription', 'desc')
+                    ->get(),
+                'arrets_maladie' => \App\Models\ArretMaladie::where('patient_id', $patientId)
+                    ->with(['medecin'])
+                    ->orderBy('date_debut', 'desc')
+                    ->get(),
+                'examens' => \App\Models\Examen::where('patient_id', $patientId)
+                    ->orderBy('date_prescription', 'desc')
+                    ->get(),
+            ];
+
+            return response()->json($dossier);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération dossier médical: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la récupération du dossier médical',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les ordonnances d'un médecin
+     */
+    public function getOrdonnances(Request $request)
+    {
+        try {
+            $medecinId = auth()->id();
+            $ordonnances = \App\Models\Ordonnance::where('medecin_id', $medecinId)
+                ->with(['patient', 'medicaments'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json($ordonnances);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération ordonnances: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la récupération des ordonnances',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer les arrêts maladie d'un médecin
+     */
+    public function getArretsMaladie(Request $request)
+    {
+        try {
+            $medecinId = auth()->id();
+            $arretsMaladie = \App\Models\ArretMaladie::where('medecin_id', $medecinId)
+                ->with(['patient'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json($arretsMaladie);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération arrêts maladie: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la récupération des arrêts maladie',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer une ordonnance spécifique
+     */
+    public function getOrdonnance($id)
+    {
+        try {
+            $ordonnance = \App\Models\Ordonnance::with(['patient', 'medecin', 'medicaments'])
+                ->findOrFail($id);
+
+            return response()->json($ordonnance);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération ordonnance: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la récupération de l\'ordonnance',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer un arrêt maladie spécifique
+     */
+    public function getArretMaladie($id)
+    {
+        try {
+            $arretMaladie = \App\Models\ArretMaladie::with(['patient', 'medecin'])
+                ->findOrFail($id);
+
+            return response()->json($arretMaladie);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération arrêt maladie: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la récupération de l\'arrêt maladie',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Récupérer tous les médecins pour le partage (excluant le médecin connecté)
+     */
+    public function getAllMedecinsForSharing()
+    {
+        try {
+            $medecins = Medecin::where('id', '!=', auth()->id())
+                ->select('id', 'prenom', 'nom', 'specialite', 'email', 'ville')
+                ->get();
+
+            return response()->json($medecins);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération médecins: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Erreur lors de la récupération des médecins',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

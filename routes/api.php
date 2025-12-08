@@ -61,9 +61,14 @@ Route::prefix('patient')->group(function () {
         Route::get('/appointments', [AppointmentController::class, 'index']);
         Route::post('/appointments', [AppointmentController::class, 'store']);
         Route::delete('/appointments/{id}', [AppointmentController::class, 'cancel']);
-        
+
         // Ajouter cette route pour l'upload de photo
         Route::post('/profile/photo', [PatientAuthController::class, 'updatePhoto']);
+
+        // NOUVELLES ROUTES POUR LE DOSSIER MEDICAL PATIENT
+        Route::get('/dossier-medical', [PatientAuthController::class, 'getDossierMedical']);
+        Route::get('/ordonnances', [PatientAuthController::class, 'getOrdonnances']);
+        Route::get('/arrets-maladie', [PatientAuthController::class, 'getArretsMaladie']);
     });
 });
 
@@ -86,6 +91,21 @@ Route::prefix('medecin')->group(function () {
         Route::get('/appointments', [AppointmentController::class, 'indexForDoctor']);
         Route::patch('/appointments/{id}/confirm', [AppointmentController::class, 'confirm']);
         Route::patch('/appointments/{id}/reject', [AppointmentController::class, 'reject']);
+
+        // ROUTE POUR RÉCUPÉRER UN RDV SPÉCIFIQUE
+        Route::get('/appointments/{id}', [AppointmentController::class, 'showForDoctor']);
+
+        // NOUVELLES ROUTES POUR LES FONCTIONNALITES MEDICALES
+        Route::get('/dossier-medical/{patientId}', [MedecinAuthController::class, 'getDossierMedicalPatient']);
+        Route::post('/ordonnances', [MedecinAuthController::class, 'createOrdonnance']);
+        Route::post('/arrets-maladie', [MedecinAuthController::class, 'createArretMaladie']);
+        Route::post('/share-medical-record', [MedecinAuthController::class, 'shareMedicalRecord']);
+
+        // Gestion des ordonnances et arrêts maladie
+        Route::get('/ordonnances', [MedecinAuthController::class, 'getOrdonnances']);
+        Route::get('/arrets-maladie', [MedecinAuthController::class, 'getArretsMaladie']);
+        Route::get('/ordonnances/{id}', [MedecinAuthController::class, 'getOrdonnance']);
+        Route::get('/arrets-maladie/{id}', [MedecinAuthController::class, 'getArretMaladie']);
     });
 });
 
@@ -148,4 +168,57 @@ Route::prefix('auth/google')->group(function () {
     Route::post('/patient', [PatientAuthController::class, 'googleAuth']);
     Route::post('/medecin', [MedecinAuthController::class, 'googleAuth']);
     Route::post('/clinique', [CliniqueAuthController::class, 'googleAuth']);
+});
+
+// ======================
+// NOUVELLES ROUTES POUR LES FONCTIONNALITES MEDICALES
+// ======================
+
+// Routes pour le partage de dossier médical
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/api/share-medical-record', [MedecinAuthController::class, 'shareMedicalRecord']);
+    Route::get('/api/medecins', [MedecinAuthController::class, 'getAllMedecinsForSharing']);
+});
+
+// Routes pour les ordonnances (accessibles par les patients et médecins)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/api/ordonnances', [MedecinAuthController::class, 'getOrdonnances']);
+    Route::get('/api/ordonnances/{id}', [MedecinAuthController::class, 'getOrdonnance']);
+    Route::post('/api/ordonnances', [MedecinAuthController::class, 'createOrdonnance']);
+});
+
+// Routes pour les arrêts maladie (accessibles par les patients et médecins)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/api/arrets-maladie', [MedecinAuthController::class, 'getArretsMaladie']);
+    Route::get('/api/arrets-maladie/{id}', [MedecinAuthController::class, 'getArretMaladie']);
+    Route::post('/api/arrets-maladie', [MedecinAuthController::class, 'createArretMaladie']);
+});
+
+// Routes pour le dossier médical complet
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/api/dossier-medical/{patientId}', [MedecinAuthController::class, 'getDossierMedicalPatient']);
+    Route::get('/api/patient/dossier-medical', [PatientAuthController::class, 'getDossierMedical']);
+});
+
+// Routes Médecin existantes (compléter avec les nouvelles)
+Route::prefix('medecin')->middleware('auth:sanctum')->group(function () {
+    // ... routes existantes ...
+
+    // NOUVELLES ROUTES POUR LES FONCTIONNALITES MEDICALES
+    Route::get('/dossier-medical/{patientId}', [MedecinAuthController::class, 'getDossierMedicalPatient']);
+    Route::post('/ordonnances', [MedecinAuthController::class, 'createOrdonnance']);
+    Route::post('/arrets-maladie', [MedecinAuthController::class, 'createArretMaladie']);
+    Route::post('/share-medical-record', [MedecinAuthController::class, 'shareMedicalRecord']);
+    Route::get('/ordonnances', [MedecinAuthController::class, 'getOrdonnances']);
+    Route::get('/arrets-maladie', [MedecinAuthController::class, 'getArretsMaladie']);
+});
+
+// Routes Patient existantes (compléter avec les nouvelles)
+Route::prefix('patient')->middleware('auth:sanctum')->group(function () {
+    // ... routes existantes ...
+
+    // NOUVELLES ROUTES POUR LE DOSSIER MEDICAL PATIENT
+    Route::get('/dossier-medical', [PatientAuthController::class, 'getDossierMedical']);
+    Route::get('/ordonnances', [PatientAuthController::class, 'getOrdonnances']);
+    Route::get('/arrets-maladie', [PatientAuthController::class, 'getArretsMaladie']);
 });

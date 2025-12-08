@@ -6,7 +6,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use Illuminate\Database\Eloquent\Relations\HasMany;
 class Patient extends Authenticatable
 {
     use HasApiTokens, Notifiable, HasFactory;
@@ -71,5 +71,45 @@ class Patient extends Authenticatable
     public function getPhotoUrlAttribute()
     {
         return $this->photo_profil ? asset('storage/' . $this->photo_profil) : null;
+    }
+
+    /**
+     * Relation avec les ordonnances
+     */
+    public function ordonnances(): HasMany
+    {
+        return $this->hasMany(Ordonnance::class);
+    }
+
+    /**
+     * Relation avec les arrêts maladie
+     */
+    public function arretsMaladie(): HasMany
+    {
+        return $this->hasMany(ArretMaladie::class);
+    }
+
+    /**
+     * Relation avec les antécédents
+     */
+    public function antecedents(): HasMany
+    {
+        return $this->hasMany(Antecedent::class);
+    }
+
+    /**
+     * Relation avec les examens
+     */
+    public function examens(): HasMany
+    {
+        return $this->hasMany(Examen::class);
+    }
+
+    /**
+     * Relation avec les partages de dossier médical
+     */
+    public function medicalRecordShares(): HasMany
+    {
+        return $this->hasMany(MedicalRecordShare::class);
     }
 }
