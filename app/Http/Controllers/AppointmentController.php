@@ -349,7 +349,7 @@ class AppointmentController extends Controller
                 'id' => $appointment->id,
                 'appointment_id' => $appointment->id,
                 'date' => $appointment->date,
-                'heure' => $appointment->heure,
+                'time' => $appointment->time,
                 'consultation_type' => $appointment->consultation_type ?? 'Consultation générale',
                 'statut' => $appointment->statut,
                 'motif' => $appointment->motif,

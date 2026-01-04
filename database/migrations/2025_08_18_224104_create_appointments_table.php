@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('medecin_id')->constrained('medecins')->onDelete('cascade');
             $table->date('date');
             $table->string('consultation_type');
-            $table->string('status')->default('en attente'); // en attente, confirmer, supprimer
+            $table->string('status')->default('confirmé');
             $table->timestamps();
         });
     }

@@ -37,7 +37,7 @@ class Clinique extends Authenticatable
         'parking_disponible' => 'boolean',
     ];
 
-    // Relation avec les médecins - ASSUREZ-VOUS QUE CETTE RELATION EXISTE
+    // Relation avec les médecins
     public function medecins()
     {
         return $this->belongsToMany(Medecin::class, 'clinique_medecin')

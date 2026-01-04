@@ -53,7 +53,7 @@ class TelemedicineController extends Controller
                 ['appointment_id' => $appointmentId],
                 [
                     'room_id' => 'meetmedpro-' . Str::random(20),
-                    'room_url' => '', // Sera rempli après
+                    'room_url' => '',
                     'status' => 'pending',
                 ]
             );
