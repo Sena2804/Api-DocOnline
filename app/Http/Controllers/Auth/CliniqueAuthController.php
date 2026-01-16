@@ -15,6 +15,35 @@ use Illuminate\Support\Facades\Log;
 
 class CliniqueAuthController extends Controller
 {
+    public function index(Request $request)
+    {
+        try {
+            // .get() permet de récupérer TOUTE la liste sans pagination
+            $cliniques = Clinique::orderBy('nom', 'asc')->get();
+
+            // On transforme la collection pour inclure l'URL complète de la photo
+            $cliniques->transform(function ($clinique) {
+                // Si la photo commence par "http", c'est une image Google OAuth
+                if ($clinique->photo_profil && str_starts_with($clinique->photo_profil, 'http')) {
+                    $clinique->photo_url = $clinique->photo_profil;
+                } else {
+                    $clinique->photo_url = $clinique->photo_profil
+                        ? asset('storage/' . $clinique->photo_profil)
+                        : null;
+                }
+                return $clinique;
+            });
+
+            return response()->json($cliniques, 200);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération liste cliniques: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Erreur lors de la récupération des cliniques',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function register(Request $request)
     {
         $request->validate([

@@ -16,6 +16,30 @@ use Illuminate\Support\Facades\DB;
 
 class PatientAuthController extends Controller
 {
+    public function index(Request $request)
+    {
+        try {
+            // 1. On récupère la collection
+            $patients = Patient::orderBy('nom', 'asc')->get();
+
+            // 2. On transforme directement la collection (pas de getCollection())
+            $patients->transform(function ($patient) {
+                $patient->photo_url = $patient->photo_profil
+                    ? asset('storage/' . $patient->photo_profil)
+                    : null;
+                return $patient;
+            });
+
+            return response()->json($patients, 200);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur récupération liste patients: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Erreur lors de la récupération des patients',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function register(Request $request)
     {
         $request->validate([
@@ -472,7 +496,7 @@ class PatientAuthController extends Controller
     {
         try {
             $patientId = auth()->id();
-            
+
             $dossier = [
                 'patient' => auth()->user(),
                 'antecedents' => \App\Models\Antecedent::where('patient_id', $patientId)->get(),

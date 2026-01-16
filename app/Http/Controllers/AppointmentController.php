@@ -56,7 +56,7 @@ class AppointmentController extends Controller
                 }
             });
 
-            return response()->json($formattedAppointments);
+            return response()->json([$formattedAppointments]);
         } catch (\Exception $e) {
             \Log::error('Erreur dans AppointmentController@index: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
@@ -382,6 +382,71 @@ class AppointmentController extends Controller
                 'message' => 'Rendez-vous non trouvé',
                 'error' => $e->getMessage()
             ], 404);
+        }
+    }
+
+    public function getStats()
+    {
+        try {
+            $patient = Auth::guard('patient')->user();
+            if (!$patient) {
+                return response()->json(['error' => 'Non authentifié'], 401);
+            }
+
+            $now = Carbon::now();
+
+            // On récupère toutes les stats en une seule passe ou presque
+            $stats = [
+                'total' => Appointment::where('patient_id', $patient->id)->count(),
+
+                'aujourd_hui' => Appointment::where('patient_id', $patient->id)
+                    ->whereDate('date', $now->toDateString())
+                    ->where('status', 'confirmé')
+                    ->count(),
+
+                'a_venir' => Appointment::where('patient_id', $patient->id)
+                    ->where('date', '>', $now->toDateString())
+                    ->where('status', 'confirmé')
+                    ->count(),
+
+                'en_attente' => Appointment::where('patient_id', $patient->id)
+                    ->where('status', 'en_attente')
+                    ->count(),
+            ];
+
+            return response()->json($stats);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getGlobalStats()
+    {
+        try {
+            $now = Carbon::now()->toDateString();
+
+            $stats = [
+                // Total historique de la clinique
+                'total_historique' => Appointment::count(),
+
+                // Tous les RDV prévus pour aujourd'hui (tous médecins confondus)
+                'total_aujourd_hui' => Appointment::whereDate('date', $now)
+                    ->where('status', 'confirmé')
+                    ->count(),
+
+                // Tous les RDV à venir dans le futur
+                'total_a_venir' => Appointment::where('date', '>', $now)
+                    ->where('status', 'confirmé')
+                    ->count(),
+
+                // Les demandes qui attendent encore une validation
+                'total_en_attente' => Appointment::where('status', 'en_attente')
+                    ->count(),
+            ];
+
+            return response()->json($stats);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 }
