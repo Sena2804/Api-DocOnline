@@ -14,7 +14,7 @@ class MedecinController extends Controller
     // Retourne la liste de tous les médecins avec leurs relations
     public function index()
     {
-        $medecins = Medecin::with(['clinique', 'cliniques'])->get();
+        $medecins = Medecin::with(['clinique', 'cliniques'])->paginate(10);
         return response()->json($medecins);
     }
 
@@ -127,7 +127,7 @@ class MedecinController extends Controller
         //
     }
 
-    // Ici on affiche les mises à jour concernant les heures de travail du médecin 
+    // Ici on affiche les mises à jour concernant les heures de travail du médecin
     public function updateWorkingHours(Request $request)
     {
         $medecin = Medecin::find(Auth::guard('medecin')->id());
