@@ -176,9 +176,11 @@ class MedecinAuthController extends Controller
     public function updateProfile(Request $request)
     {
         try {
-            $medecin = $request->user();
+            $medecinId = $request->id;
+            $medecin = Medecin::findOrFail($medecinId);
 
             $validated = $request->validate([
+                'id' => 'required|exists:medecins,id',
                 'nom' => 'sometimes|string|max:255',
                 'prenom' => 'sometimes|string|max:255',
                 'email' => 'sometimes|string|email|unique:medecins,email,' . $medecin->id,
@@ -237,7 +239,7 @@ class MedecinAuthController extends Controller
 
             // Décoder working_hours pour le retour
             if ($medecin->working_hours && is_string($medecin->working_hours)) {
-                $medecin->working_hours = json_decode($medecin->working_hours);
+                $dataToUpdate['working_hours'] = $validated['working_hours'];
             }
 
             return response()->json($medecin, 200);
@@ -796,7 +798,7 @@ class MedecinAuthController extends Controller
     {
         try {
             $patient = Patient::findOrFail($patientId);
-            
+
             $dossier = [
                 'patient' => $patient,
                 'antecedents' => \App\Models\Antecedent::where('patient_id', $patientId)->get(),
@@ -932,6 +934,23 @@ class MedecinAuthController extends Controller
                 'message' => 'Erreur lors de la récupération des médecins',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function deleteMedecin($id)
+    {
+        try {
+            $medecin = Medecin::findOrFail($id);
+
+            // Supprimer les relations dans la table pivot avant de supprimer le médecin
+            $medecin->cliniques()->detach();
+
+            // Supprimer le compte (et éventuellement la photo si elle existe)
+            $medecin->delete();
+
+            return response()->json(['message' => 'Médecin supprimé avec succès'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Erreur lors de la suppression'], 500);
         }
     }
 }

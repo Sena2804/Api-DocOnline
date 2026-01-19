@@ -101,6 +101,7 @@ Route::prefix('medecin')->group(function () {
         Route::put('/profile', [MedecinAuthController::class, 'updateProfile']);
         Route::put('/profile/password', [MedecinAuthController::class, 'updatePassword']);
         Route::delete('/profile', [MedecinAuthController::class, 'deleteAccount']);
+        Route::delete('/{id}', [MedecinAuthController::class, 'deleteMedecin']);
         Route::post('/profile/photo', [MedecinAuthController::class, 'updatePhoto']);
         Route::put('/working-hours', [MedecinAuthController::class, 'updateWorkingHours']);
         Route::get('/appointments', [AppointmentController::class, 'doctorAppointments']);
