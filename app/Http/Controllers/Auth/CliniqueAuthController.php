@@ -123,7 +123,8 @@ class CliniqueAuthController extends Controller
 
     public function updateProfile(Request $request)
     {
-        $clinique = $request->user();
+        $cliniqueId = $request->id;
+        $clinique = Clinique::findOrFail($cliniqueId);
 
         $request->validate([
             'nom' => 'sometimes|string|max:255',
@@ -565,6 +566,35 @@ class CliniqueAuthController extends Controller
             return response()->json([
                 'error' => 'Erreur d\'authentification Google',
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $clinique = Clinique::find($id);
+
+            if (!$clinique) {
+                return response()->json([
+                    'message' => 'clinique non trouvée'
+                ], 404);
+            }
+
+            if ($clinique->photo_profil) {
+                Storage::disk('public')->delete($clinique->photo_profil);
+            }
+
+            $clinique->delete();
+
+            return response()->json([
+                'message' => 'La clinique a été supprimée avec succès'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erreur lors de la suppression',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

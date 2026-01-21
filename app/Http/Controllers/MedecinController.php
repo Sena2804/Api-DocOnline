@@ -14,7 +14,7 @@ class MedecinController extends Controller
     // Retourne la liste de tous les médecins avec leurs relations
     public function index()
     {
-        $medecins = Medecin::with(['clinique', 'cliniques'])->paginate(10);
+        $medecins = Medecin::with(['clinique', 'cliniques'])->orderBy('nom', 'asc')->paginate(10);
         return response()->json($medecins);
     }
 

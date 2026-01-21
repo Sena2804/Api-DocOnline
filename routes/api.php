@@ -21,15 +21,22 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Route pour la connexio en global
+// Route pour la connexion en global
 Route::post('/login', [GlobalAuthController::class, 'login']);
 
 // Route pour la déconnexion protégée par le middleware
 Route::middleware('auth:sanctum')->post('/logout', [GlobalAuthController::class, 'logout']);
 
+
 Route::middleware('auth:sanctum')->group(function () {
     // Route pour récupérer tous les utilisateurs
     Route::get('/users', [GlobalAuthController::class, 'getAllUsers']);
+    // Route pour l'enregistrement d'un nouvel admin
+    Route::post('/users', [GlobalAuthController::class, 'registerAdmin']);
+    // Route pour modifier
+    Route::put('/users/update', [GlobalAuthController::class, 'updateUser']);
+    // Route pour supprimer
+    Route::delete('/users/{id}', [GlobalAuthController::class, 'destroyUser']);
 });
 
 Route::get('/admin/stats/global', [AppointmentController::class, 'getGlobalStats'])->middleware('auth:sanctum');
@@ -72,6 +79,7 @@ Route::prefix('patient')->group(function () {
         Route::put('/profile', [PatientAuthController::class, 'updateProfile']);
         Route::put('/profile/password', [PatientAuthController::class, 'updatePassword']);
         Route::delete('/profile', [PatientAuthController::class, 'deleteAccount']);
+        Route::delete('/{id}', [PatientAuthController::class, 'destroy']);
         Route::get('/appointments', [AppointmentController::class, 'index']);
         Route::post('/appointments', [AppointmentController::class, 'store']);
         Route::delete('/appointments/{id}', [AppointmentController::class, 'cancel']);
@@ -139,6 +147,7 @@ Route::prefix('clinique')->group(function () {
         Route::put('/profile', [CliniqueAuthController::class, 'updateProfile']);
         Route::put('/profile/password', [CliniqueAuthController::class, 'updatePassword']);
         Route::delete('/profile', [CliniqueAuthController::class, 'deleteAccount']);
+        Route::delete('/{id}', [CliniqueAuthController::class, 'destroy']);
         Route::post('/profile/photo', [CliniqueAuthController::class, 'updatePhoto']);
         Route::get('/', [CliniqueAuthController::class, 'index']);
 

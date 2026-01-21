@@ -59,4 +59,50 @@ class GlobalAuthController extends Controller
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'Déconnexion réussie']);
     }
+
+    public function registerAdmin(Request $request)
+    {
+        $fields = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'role' => 'required|string'
+        ]);
+
+        $user = User::create([
+            'name' => $fields['name'],
+            'email' => $fields['email'],
+            'password' => bcrypt($fields['password']),
+            'role' => $fields['role'],
+        ]);
+
+        return response($user, 201);
+    }
+
+    // Modifier un utilisateur
+    public function updateUser(Request $request)
+    {
+        $userId = $request->id;
+        $user = User::findOrFail($userId);
+
+        // Utilisation de nullable pour ne modifier que ce qui est nécessaire
+        $fields = $request->validate([
+            'name' => 'nullable|string|max:255',
+            'email' => 'nullable|string|email|unique:users,email,' . $userId,
+        ]);
+
+        // On filtre les champs null pour ne pas écraser les données par du vide
+        $user->update(array_filter($fields));
+
+        return response($user, 200);
+    }
+
+    // Supprimer un utilisateur
+    public function destroyUser($id)
+    {
+        $user = User::findOrFail($id);
+        $user->delete();
+
+        return response(['message' => 'Utilisateur supprimé avec succès'], 200);
+    }
 }

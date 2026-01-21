@@ -13,34 +13,44 @@ class CliniqueController extends Controller
     public function index(Request $request)
     {
         try {
+            // On commence par charger la relation medecins si nécessaire
             $query = Clinique::query()->with('medecins');
 
-            // Recherche par nom si un terme de recherche est fourni
-            if ($request->has('search') && !empty($request->search)) {
+            // Recherche par nom, type ou adresse
+            if ($request->filled('search')) {
                 $searchTerm = $request->search;
-                $query->where('nom', 'LIKE', '%' . $searchTerm . '%')
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('nom', 'LIKE', '%' . $searchTerm . '%')
                     ->orWhere('type_etablissement', 'LIKE', '%' . $searchTerm . '%')
                     ->orWhere('address', 'LIKE', '%' . $searchTerm . '%');
+                });
             }
 
-            // Sélectionner uniquement les champs nécessaires
-            $cliniques = $query->select([
-                'id',
-                'nom',
-                'email',
-                'telephone',
-                'address',
-                'type_etablissement',
-                'description',
-                'photo_profil',
-                'urgences_24h',
-                'parking_disponible',
-                'site_web',
-                'created_at'
-            ])->get();
+            // On définit les colonnes à sélectionner
+            $columns = [
+                'id', 'nom', 'email', 'telephone', 'address',
+                'type_etablissement', 'description', 'photo_profil',
+                'urgences_24h', 'parking_disponible', 'site_web', 'created_at'
+            ];
 
+            // REMPLACEMENT de ->get() par ->paginate()
+            $cliniques = $query->select($columns)
+                            ->orderBy('nom', 'asc')
+                            ->paginate(10);
+
+            // Transformation pour ajouter l'URL complète de la photo
+            $cliniques->through(function ($clinique) {
+                $clinique->photo_url = $clinique->photo_profil
+                    ? asset('storage/' . $clinique->photo_profil)
+                    : null;
+                return $clinique;
+            });
+
+            // Retourne l'objet de pagination complet (data, total, current_page, etc.)
             return response()->json($cliniques);
+
         } catch (\Exception $e) {
+            \Log::error('Erreur index cliniques: ' . $e->getMessage());
             return response()->json([
                 'error' => 'Erreur lors de la récupération des cliniques',
                 'message' => $e->getMessage()
