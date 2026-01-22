@@ -63,6 +63,25 @@ class AppointmentController extends Controller
             return response()->json(['error' => 'Erreur interne du serveur: ' . $e->getMessage()], 500);
         }
     }
+
+    public function getAppointments()
+    {
+        try {
+            // On récupère les rendez-vous triés par date la plus récente
+            // On charge les relations 'patient' et 'medecin'
+            $appointments = Appointment::with(['patient:id,nom,prenom,email,telephone', 'medecin:id,nom,prenom,specialite'])
+                ->orderBy('date', 'desc')
+                ->orderBy('time', 'desc')
+                ->paginate(15); // Utilisation de la pagination pour la performance
+
+            return response()->json($appointments, 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erreur lors de la récupération des rendez-vous',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     /**
      * Création d'un rendez-vous par un patient (avec confirmation automatique)
      */

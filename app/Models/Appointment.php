@@ -23,6 +23,8 @@ class Appointment extends Model
 
     protected $casts = [
         'date' => 'date',
+        'video_started_at' => 'datetime',
+        'video_ended_at' => 'datetime',
     ];
 
     /**
